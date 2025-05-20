@@ -1,0 +1,68 @@
+{% extends "gestion/dashboard.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container my-5">
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-body">
+      
+      <!-- Titre -->
+      <h4 class="mb-4 fw-bold text-secondary">
+        <i class="bi bi-plus-circle-fill me-2 text-primary"></i> Ajouter un client
+      </h4>
+
+      <!-- Messages flash -->
+      {% if messages %}
+        <div class="mb-3">
+          {% for message in messages %}
+            {% if 'client' in message.tags %}
+              <div class="alert alert-{{ message.level_tag }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Formulaire -->
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Nom</label>
+          <input name="nom" class="form-control" required>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Prénom</label>
+          <input name="prenom" class="form-control" required>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Email</label>
+          <input type="email" name="email" class="form-control" required>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Téléphone</label>
+          <input name="tel" class="form-control">
+        </div>
+
+        <div class="col-12">
+          <label class="form-label fw-semibold">Adresse</label>
+          <input name="adresse" class="form-control">
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+          <a href="{% url 'clients' %}" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1"></i> Annuler
+          </a>
+          <button type="submit" class="btn btn-primary rounded-pill px-4">
+            <i class="bi bi-check-circle me-1"></i> Ajouter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

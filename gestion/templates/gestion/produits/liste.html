@@ -1,0 +1,189 @@
+{% extends "gestion/dashboard.html" %}
+{% load static %}
+
+
+{% block content %}
+<div class="container my-5">
+
+  <!-- Bloc messages -->
+ 
+
+
+
+  <!-- Titre + bouton -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold text-secondary">
+      <i class="bi bi-box-seam-fill me-2 text-primary"></i> Gestion des Produits
+    </h3>
+
+    <a href="{% url 'ajouter_produit' %}"
+       class="btn btn-primary rounded-pill px-4 py-2 d-flex align-items-center shadow-sm">
+      <i class="bi bi-plus-circle me-2 fs-5"></i> Ajouter un produit
+    </a>
+  </div>
+
+  <!-- Barre Afficher / Recherche -->
+  <div class="bg-white rounded-top-4 px-3 py-2 border border-bottom-0
+              d-flex justify-content-between flex-wrap gap-2">
+
+    <!-- Sélecteur taille -->
+    <div class="d-flex align-items-center gap-2">
+      <span class="fw-semibold text-secondary">Afficher</span>
+
+      <form id="perPageForm" method="get" class="m-0">
+        {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+        <select name="per_page" class="form-select form-select-sm w-auto"
+                onchange="this.form.submit()">
+          {% for n in per_page_options %}
+            <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </form>
+
+      <span class="fw-semibold text-secondary">produit{{ per_page|pluralize }}</span>
+    </div>
+
+    <!-- Recherche -->
+    <form class="d-flex" method="get" role="search">
+      {% if per_page %}<input type="hidden" name="per_page" value="{{ per_page }}">{% endif %}
+      <input id="searchInput" name="q" value="{{ query }}"
+             class="form-control form-control-sm rounded-pill shadow-sm w-auto"
+             placeholder="Rechercher…">
+    </form>
+  </div>
+
+  <!-- Tableau produits -->
+  <div class="card border-0 shadow-sm rounded-4 rounded-top-0">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 text-center">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Image</th>
+              <th>Référence</th>
+              <th>Désignation</th>
+              <th>Prix</th>
+              <th>Quantité</th>
+              <th>Fournisseur</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for produit in produits %}
+            <tr {% if produit.quantite < 5 %}class="table-danger"{% endif %}>
+              <td>{{ forloop.counter0|add:produits.start_index }}</td>
+              <td>
+                {% if produit.image %}
+                  <img src="{{ produit.image.url }}" 
+                       class="img-thumbnail rounded-circle"
+                       style="width:50px;height:50px;object-fit:cover" 
+                       alt="Produit">
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="fw-semibold text-primary">{{ produit.reference }}</td>
+              <td>{{ produit.designation }}</td>
+              <td>{{ produit.prix }} DH</td>
+              <td>{{ produit.quantite }}</td>
+              <td>{{ produit.fournisseur.libelle }}</td>
+              <td class="text-end">
+                <a href="{% url 'modifier_produit' produit.id %}"
+                   class="btn btn-sm btn-outline-primary me-1 rounded-circle" 
+                   title="Modifier">
+                  <i class="bi bi-pencil-fill"></i>
+                </a>
+                <button class="btn btn-sm btn-outline-danger rounded-circle me-1"
+                        data-bs-toggle="modal" data-bs-target="#del{{ produit.id }}" 
+                        title="Supprimer">
+                  <i class="bi bi-trash-fill"></i>
+                </button>
+                <a href="{% url 'rapport_produit' produit.id %}"
+                   class="btn btn-sm btn-outline-secondary rounded-circle" 
+                   title="PDF">
+                  <i class="bi bi-file-earmark-pdf-fill"></i>
+                </a>
+
+                <!-- Modal suppression -->
+                <div class="modal fade" id="del{{ produit.id }}" tabindex="-1">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content rounded-4 border-0 shadow">
+                      <div class="modal-header bg-danger text-white rounded-top-4">
+                        <h5 class="modal-title">Confirmer</h5>
+                        <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                      </div>
+                      <div class="modal-body text-start">
+                        Supprimer <strong>{{ produit.designation }}</strong> ?
+                      </div>
+                      <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <a href="{% url 'supprimer_produit' produit.id %}" class="btn btn-danger">Oui</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="py-4 text-muted">Aucun produit trouvé.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination & info -->
+  <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+    <span class="small text-secondary">
+      Affichage de {{ produits.start_index }} à {{ produits.end_index }}
+      sur {{ produits.paginator.count }} produit{{ produits.paginator.count|pluralize }}
+    </span>
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% if produits.has_previous %}
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ produits.previous_page_number }}{% if query %}&q={{ query }}{% endif %}&per_page={{ per_page }}">
+              Précédent
+            </a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Précédent</span></li>
+        {% endif %}
+
+        {% for num in produits.paginator.page_range %}
+          {% if num >= produits.number|add:-2 and num <= produits.number|add:2 %}
+            {% if produits.number == num %}
+              <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% else %}
+              <li class="page-item">
+                <a class="page-link"
+                   href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}&per_page={{ per_page }}">
+                  {{ num }}
+                </a>
+              </li>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+
+        {% if produits.has_next %}
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ produits.next_page_number }}{% if query %}&q={{ query }}{% endif %}&per_page={{ per_page }}">
+              Suivant
+            </a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Suivant</span></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+
+</div>
+{% endblock %}

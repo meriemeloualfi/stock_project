@@ -1,0 +1,77 @@
+{% extends 'gestion/dashboard.html' %}
+
+{% block content %}
+<div class="container my-5">
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-body">
+      <!-- Titre -->
+      <h4 class="mb-4 fw-bold text-secondary">
+        <i class="bi bi-plus-circle-fill me-2 text-primary"></i> Ajouter un produit
+      </h4>
+
+      <!-- Messages flash -->
+      {% if messages %}
+        <div class="mb-3">
+          {% for message in messages %}
+            {% if 'produit' in message.tags %}
+              <div class="alert alert-{{ message.level_tag }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Formulaire -->
+      <form method="POST" enctype="multipart/form-data" class="row g-3">
+        {% csrf_token %}
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Référence</label>
+          <input type="text" name="reference" class="form-control" required>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Désignation</label>
+          <input type="text" name="designation" class="form-control" required>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Prix (DH)</label>
+          <input type="number" name="prix" step="0.01" class="form-control" required>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Quantité</label>
+          <input type="number" name="quantite" class="form-control" min="1" required>
+        </div>
+
+        <div class="col-md-12">
+          <label class="form-label fw-semibold">Fournisseur</label>
+          <select name="fournisseur" class="form-select" required>
+            <option value="">-- Sélectionner un fournisseur --</option>
+            {% for f in fournisseurs %}
+              <option value="{{ f.id }}">{{ f.libelle }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-12">
+          <label class="form-label fw-semibold">Image du produit</label>
+          <input type="file" name="image" class="form-control">
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+          <a href="{% url 'produits' %}" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1"></i> Annuler
+          </a>
+          <button type="submit" class="btn btn-primary rounded-pill px-4">
+            <i class="bi bi-check-circle me-1"></i> Ajouter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

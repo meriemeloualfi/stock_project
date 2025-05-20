@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>StockMaster</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      overflow-x: hidden;
+    }
+    .brand a {
+      text-decoration: none;
+      color: inherit;
+    }
+    .sidebar {
+      width: 220px;
+      height: 100vh;
+      background-color: #1e1e2f;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0;
+      top: 0;
+    }
+    .sidebar .brand {
+      padding: 20px;
+      font-size: 22px;
+      font-weight: bold;
+      text-align: center;
+      background-color: #151525;
+      letter-spacing: 1px;
+    }
+    .user-info {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid #333;
+    }
+    .user-info img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-bottom: 10px;
+      border: 2px solid #444;
+    }
+    .user-info h6 {
+      margin: 0;
+      font-size: 16px;
+    }
+    .nav-links {
+      flex-grow: 1;
+      padding: 20px 10px;
+    }
+    .nav-links a {
+      display: flex;
+      align-items: center;
+      color: #ccc;
+      text-decoration: none;
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      transition: 0.3s;
+    }
+    .nav-links a:hover {
+      background-color: #343a40;
+      color: white;
+    }
+    .nav-links i {
+      margin-right: 10px;
+    }
+    .logout {
+      padding: 15px 20px;
+      border-top: 1px solid #333;
+    }
+    .logout a {
+      color: #ff4d4f;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .main-content {
+      margin-left: 220px;
+      padding: 30px;
+      width: calc(100% - 220px);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+    .card-body i {
+      pointer-events: none;
+    }
+    /* Optionnel: améliorer le style des toasts */
+    .toast {
+      box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+      border-radius: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="d-flex">
+  <nav class="sidebar">
+    <div class="brand">
+        <a href="{% url 'dashboard' %}">STOCKMASTER</a>
+    </div>
+
+    <div class="user-info">
+      <img src="https://secure.gravatar.com/avatar/3a4fe3914947f15d8971ad36d20f13b3?s=192" alt="Utilisateur">
+      <h6>Admin</h6>
+    </div>
+
+    <div class="nav-links">
+      <a href="{% url 'produits' %}"><i class="bi bi-box-seam"></i> Produits</a>
+      <a href="{% url 'clients' %}"><i class="bi bi-people"></i> Clients</a>
+      <a href="{% url 'fournisseurs' %}"><i class="bi bi-truck"></i> Fournisseurs</a>
+      <a href="{% url 'stock' %}"><i class="bi bi-clipboard-data"></i> Stock</a>
+    </div>
+
+    <div class="logout mt-auto">
+      <a href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Déconnexion</a>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    {% block content %}
+
+    <!-- Conteneur pour les toasts placé ici, au-dessus du contenu -->
+    <div class="position-fixed top-0 end-0 p-3" 
+         style="z-index: 1080; margin-top: 70px; margin-right: 20px;">
+      <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <h2 class="text-center mb-5 fw-bold">STATISTIQUES</h2>
+
+    <div class="row justify-content-start g-4">
+      <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <div class="card text-white bg-success h-100 shadow-sm position-relative text-center">
+          <div class="card-body d-flex flex-column justify-content-between">
+            <h6 class="card-title text-uppercase small fw-bold">Produits</h6>
+            <h1>{{ total_produits }}</h1>
+            <i class="bi bi-box-seam fs-1 opacity-25 position-absolute bottom-0 end-0 m-3"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <div class="card text-white bg-warning h-100 shadow-sm position-relative text-center">
+          <div class="card-body d-flex flex-column justify-content-between">
+            <h6 class="card-title text-uppercase small fw-bold">Clients</h6>
+            <h1>{{ total_clients }}</h1>
+            <i class="bi bi-people-fill fs-1 opacity-25 position-absolute bottom-0 end-0 m-3"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <div class="card text-white bg-info h-100 shadow-sm position-relative text-center">
+          <div class="card-body d-flex flex-column justify-content-between">
+            <h6 class="card-title text-uppercase small fw-bold">Fournisseurs</h6>
+            <h1>{{ total_fournisseurs }}</h1>
+            <i class="bi bi-truck fs-1 opacity-25 position-absolute bottom-0 end-0 m-3"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <div class="card text-white bg-danger h-100 shadow-sm position-relative text-center">
+          <div class="card-body d-flex flex-column justify-content-between">
+            <h6 class="card-title text-uppercase small fw-bold">Stock</h6>
+            <h1>{{ total_stock }}</h1>
+            <i class="bi bi-clipboard-data fs-1 opacity-25 position-absolute bottom-0 end-0 m-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endblock %}
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const toastContainer = document.getElementById("toast-container");
+
+    {% if messages %}
+      {% for message in messages %}
+        const toastEl = document.createElement("div");
+        toastEl.className = "toast align-items-center text-white bg-{{ message.tags }} border-0 show mb-2";
+        toastEl.setAttribute("role", "alert");
+        toastEl.setAttribute("aria-live", "assertive");
+        toastEl.setAttribute("aria-atomic", "true");
+
+        toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">{{ message|escape }}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+        toastContainer.appendChild(toastEl);
+
+        new bootstrap.Toast(toastEl, {
+          delay: 4000
+        }).show();
+      {% endfor %}
+    {% endif %}
+  });
+</script>
+
+</body>
+</html>

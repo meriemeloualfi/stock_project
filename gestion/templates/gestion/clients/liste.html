@@ -1,0 +1,170 @@
+{% extends "gestion/dashboard.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container my-5">
+
+  <!-- Titre + bouton -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold text-secondary">
+      <i class="bi bi-people-fill me-2 text-primary"></i> Gestion des Clients
+    </h3>
+    <a href="{% url 'ajouter_client' %}"
+       class="btn btn-primary rounded-pill px-4 py-2 d-flex align-items-center shadow-sm">
+      <i class="bi bi-plus-circle me-2 fs-5"></i> Ajouter un client
+    </a>
+  </div>
+
+  <!-- Barre Afficher / Recherche -->
+  <div class="bg-white rounded-top-4 px-3 py-2 border border-bottom-0
+              d-flex justify-content-between flex-wrap gap-2">
+
+    <!-- Sélecteur taille -->
+    <div class="d-flex align-items-center gap-2">
+      <span class="fw-semibold text-secondary">Afficher</span>
+
+      <form id="perPageForm" method="get" class="m-0">
+        {% if query %}
+          <input type="hidden" name="q" value="{{ query }}">
+        {% endif %}
+        <select name="per_page" class="form-select form-select-sm w-auto"
+                onchange="this.form.submit()">
+          {% for n in per_page_options %}
+            <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </form>
+
+      <span class="fw-semibold text-secondary">client{{ clients.paginator.count|pluralize }}</span>
+    </div>
+
+    <!-- Recherche -->
+    <form class="d-flex" method="get" role="search">
+      {% if per_page %}
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+      {% endif %}
+      <input id="searchInput" name="q" value="{{ query }}"
+             class="form-control form-control-sm rounded-pill shadow-sm w-auto"
+             placeholder="Rechercher…">
+    </form>
+  </div>
+
+  <!-- Tableau clients -->
+  <div class="card border-0 shadow-sm rounded-4 rounded-top-0">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 text-center">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Nom</th>
+              <th>Prénom</th>
+              <th>Email</th>
+              <th>Téléphone</th>
+              <th>Adresse</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for client in clients %}
+            <tr>
+              <td>{{ forloop.counter0|add:clients.start_index }}</td>
+              <td class="fw-semibold text-primary">{{ client.nom }}</td>
+              <td>{{ client.prenom }}</td>
+              <td>{{ client.email }}</td>
+              <td>{{ client.tel|default:"—" }}</td>
+              <td>{{ client.adresse|default:"—" }}</td>
+              <td class="text-end">
+  <div class="d-flex justify-content-end align-items-center gap-1">
+    <a href="{% url 'modifier_client' client.id %}"
+       class="btn btn-sm btn-outline-primary rounded-circle" title="Modifier">
+      <i class="bi bi-pencil-fill"></i>
+    </a>
+    <button class="btn btn-sm btn-outline-danger rounded-circle"
+            data-bs-toggle="modal" data-bs-target="#del{{ client.id }}" title="Supprimer">
+      <i class="bi bi-trash-fill"></i>
+    </button>
+
+    <div class="modal fade" id="del{{ client.id }}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+          <div class="modal-header bg-danger text-white rounded-top-4">
+            <h5 class="modal-title">Confirmation</h5>
+            <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body text-start">
+            Supprimer le client <strong>{{ client.nom }} {{ client.prenom }}</strong> ?
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <a href="{% url 'supprimer_client' client.id %}" class="btn btn-danger">Confirmer</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</td>
+
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="py-4 text-muted text-center">Aucun client trouvé.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination & info -->
+  <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+    <span class="small text-secondary">
+      Affichage de {{ clients.start_index }} à {{ clients.end_index }}
+      sur {{ clients.paginator.count }} client{{ clients.paginator.count|pluralize }}
+    </span>
+
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+        {% if clients.has_previous %}
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ clients.previous_page_number }}{% if query %}&q={{ query }}{% endif %}&per_page={{ per_page }}">
+              Précédent
+            </a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Précédent</span></li>
+        {% endif %}
+
+        {% for num in clients.paginator.page_range %}
+          {% if num >= clients.number|add:-2 and num <= clients.number|add:2 %}
+            {% if clients.number == num %}
+              <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% else %}
+              <li class="page-item">
+                <a class="page-link"
+                   href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}&per_page={{ per_page }}">
+                  {{ num }}
+                </a>
+              </li>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+
+        {% if clients.has_next %}
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ clients.next_page_number }}{% if query %}&q={{ query }}{% endif %}&per_page={{ per_page }}">
+              Suivant
+            </a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Suivant</span></li>
+        {% endif %}
+      </ul>
+    </nav>
+  </div>
+
+</div>
+{% endblock %}

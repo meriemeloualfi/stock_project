@@ -1,0 +1,89 @@
+{% extends 'gestion/dashboard.html' %}
+
+{% block content %}
+<div class="container my-5">
+  <!-- Messages flash sous forme d’alert bootstrap -->
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.level_tag }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-body">
+      <!-- Titre avec icône -->
+      <h4 class="mb-4 fw-bold text-secondary">
+        <i class="bi bi-pencil-square me-2 text-warning"></i> Modifier le produit
+      </h4>
+
+      <!-- Formulaire -->
+      <form method="POST" enctype="multipart/form-data" class="row g-3">
+        {% csrf_token %}
+
+        <div class="col-md-6">
+          <label for="reference" class="form-label fw-semibold">Référence</label>
+          <input type="text" name="reference" id="reference" value="{{ produit.reference }}" class="form-control" required>
+        </div>
+
+        <div class="col-md-6">
+          <label for="designation" class="form-label fw-semibold">Désignation</label>
+          <input type="text" name="designation" id="designation" value="{{ produit.designation }}" class="form-control" required>
+        </div>
+
+        <div class="col-md-6">
+          <label for="prix" class="form-label fw-semibold">Prix (DH)</label>
+          <input type="number" name="prix" id="prix" step="0.01" value="{{ produit.prix }}" class="form-control" required>
+        </div>
+
+        <div class="col-md-6">
+          <label for="quantite" class="form-label fw-semibold">Quantité</label>
+          <input type="number" name="quantite" id="quantite" value="{{ produit.quantite }}" class="form-control" required>
+        </div>
+
+        <div class="col-12">
+          <label for="fournisseur" class="form-label fw-semibold">Fournisseur</label>
+          <select name="fournisseur" id="fournisseur" class="form-select" required>
+            <option value="">-- Sélectionner un fournisseur --</option>
+            {% for f in fournisseurs %}
+              <option value="{{ f.id }}" {% if produit.fournisseur.id == f.id %}selected{% endif %}>
+                {{ f.libelle }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12">
+          <label for="image" class="form-label fw-semibold">Image du produit</label>
+          {% if produit.image %}
+            <div class="mb-2">
+              <img src="{{ produit.image.url }}" alt="Image actuelle" style="max-height: 120px;" class="rounded border shadow-sm">
+            </div>
+          {% endif %}
+          <input type="file" name="image" id="image" class="form-control">
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+          <a href="{% url 'produits' %}" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1"></i> Retour à la liste
+          </a>
+          <button type="submit" class="btn btn-primary rounded-pill px-4">
+            <i class="bi bi-save me-1"></i> Enregistrer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Active les toasts Bootstrap 5 automatiquement
+  document.querySelectorAll('.toast').forEach(toast => {
+    new bootstrap.Toast(toast, { delay: 3000 }).show();
+  });
+</script>
+{% endblock %}

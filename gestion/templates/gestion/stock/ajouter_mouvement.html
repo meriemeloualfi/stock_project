@@ -1,0 +1,34 @@
+{% extends 'gestion/dashboard.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Ajouter un mouvement pour le stock : {{ stock.nom }}</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group mb-3">
+            <label for="produit">Produit</label>
+            <select name="produit" id="produit" class="form-control" required>
+                <option value="">-- Sélectionner un produit --</option>
+                {% for produit in produits %}
+                    <option value="{{ produit.id }}">{{ produit.designation }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="entree">Quantité entrée</label>
+            <input type="number" name="entree" id="entree" class="form-control" min="0" value="0">
+        </div>
+
+        <div class="form-group mb-3">
+            <label for="sortie">Quantité sortie</label>
+            <input type="number" name="sortie" id="sortie" class="form-control" min="0" value="0">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Valider le mouvement</button>
+        <a href="{% url 'detail_stock' stock.id %}" class="btn btn-secondary">Annuler</a>
+    </form>
+</div>
+{% endblock %}

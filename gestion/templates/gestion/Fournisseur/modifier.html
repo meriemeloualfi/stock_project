@@ -1,0 +1,64 @@
+{% extends "gestion/dashboard.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container my-5">
+
+  <!-- Messages flash sous forme d’alert bootstrap -->
+  {% if messages %}
+    <div class="mb-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.level_tag }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-body">
+
+      <!-- Titre avec icône -->
+      <h4 class="mb-4 fw-bold text-primary">
+        <i class="bi bi-pencil-square me-2 text-primary"></i> Modifier le fournisseur
+      </h4>
+
+      <!-- Formulaire -->
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+
+        <div class="col-md-6">
+          <label for="libelle" class="form-label fw-semibold">Nom du fournisseur</label>
+          <input type="text" id="libelle" name="libelle" class="form-control" value="{{ fournisseur.libelle }}" required>
+        </div>
+
+        <div class="col-md-6">
+          <label for="email" class="form-label fw-semibold">Email</label>
+          <input type="email" id="email" name="email" class="form-control" value="{{ fournisseur.email }}">
+        </div>
+
+        <div class="col-md-6">
+          <label for="tel" class="form-label fw-semibold">Téléphone</label>
+          <input type="text" id="tel" name="tel" class="form-control" value="{{ fournisseur.tel }}">
+        </div>
+
+        <div class="col-md-6">
+          <label for="adresse" class="form-label fw-semibold">Adresse</label>
+          <textarea id="adresse" name="adresse" class="form-control" rows="2">{{ fournisseur.adresse }}</textarea>
+        </div>
+
+        <div class="col-12 d-flex justify-content-between mt-4">
+          <a href="{% url 'fournisseurs' %}" class="btn btn-outline-primary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1"></i> Annuler
+          </a>
+          <button type="submit" class="btn btn-primary rounded-pill px-4">
+            <i class="bi bi-save me-1"></i> Enregistrer
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
