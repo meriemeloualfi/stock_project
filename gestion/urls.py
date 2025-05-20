@@ -42,4 +42,12 @@ urlpatterns = [
 
     
     path('logout/', views.custom_logout, name='logout'),
+
+    path('register/', views.register_client, name='register'),
+path('client/dashboard/', views.dashboard_client, name='dashboard_client'),
+path('client/profil/', views.modifier_profil_client, name='modifier_profil'),
+path('client/produits/', views.produits_client, name='produits_client'),
+path('client/produits/commande/<int:produit_id>/', views.commander_produit, name='commander_produit'),
+path('client/commandes/', views.mes_commandes, name='mes_commandes'),
+
 ]

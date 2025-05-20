@@ -1,49 +1,43 @@
-import os
-from django.conf import settings
-from weasyprint import HTML
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
-from .models import Client, Fournisseur, Produit, Stock, MouvementStock
-from django.db.models import Q
-from django.http import HttpResponse
-from django.template.loader import get_template
-from xhtml2pdf import pisa
-from django.shortcuts import get_object_or_404
-from django.http import HttpResponse
-from django.template.loader import render_to_string
-import weasyprint
-import pathlib
+from .models import Client, Fournisseur, Produit, Stock, Commande
+from .forms import ClientRegisterForm
 
 
-# LOGIN
+# AUTHENTIFICATION
 def custom_login(request):
     if request.method == 'POST':
-        user = authenticate(request, username=request.POST['username'], password=request.POST['password'])
-        if user:
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
             login(request, user)
-            return redirect('dashboard')
+            if user.role == 'client':
+                return redirect('dashboard_client')
+            elif user.role == 'fournisseur':
+                return redirect('fournisseur_home')
+            else:
+                return redirect('dashboard')
         else:
             return render(request, 'gestion/login.html', {'error': 'Identifiants incorrects'})
     return render(request, 'gestion/login.html')
 
-
-# LOGOUT
 def custom_logout(request):
     logout(request)
     return redirect('login')
 
 
-# DASHBOARD
+# DASHBOARD ADMIN
 @login_required
 def dashboard(request):
     total_produits = Produit.objects.count()
     total_clients = Client.objects.count()
     total_fournisseurs = Fournisseur.objects.count()
-    total_stock = Stock.objects.count() 
+    total_stock = Stock.objects.count()
 
     return render(request, 'gestion/dashboard.html', {
         'total_produits': total_produits,
@@ -52,109 +46,123 @@ def dashboard(request):
         'total_stock': total_stock,
     })
 
-# PRODUITS
+
+# CLIENT
+@login_required
+def clients(request):
+    clients = Client.objects.all()
+
+    if request.method == 'POST':
+        client_id = request.POST.get('client_id')
+        nom = request.POST['nom']
+        prenom = request.POST['prenom']
+        email = request.POST['email']
+        tel = request.POST['tel']
+        adresse = request.POST['adresse']
+
+        if client_id:
+            client = get_object_or_404(Client, id=client_id)
+            client.nom = nom
+            client.prenom = prenom
+            client.email = email
+            client.tel = tel
+            client.adresse = adresse
+            client.save()
+        else:
+            Client.objects.create(nom=nom, prenom=prenom, email=email, tel=tel, adresse=adresse)
+
+        return redirect('clients')
+
+    return render(request, 'gestion/clients.html', {'clients': clients})
+
+
+@login_required
+def supprimer_client(request, client_id):
+    client = get_object_or_404(Client, id=client_id)
+    client.delete()
+    return redirect('clients')
+
+
+def register_client(request):
+    if request.method == 'POST':
+        form = ClientRegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.role = 'client'
+            user.save()
+
+            Client.objects.create(
+                user=user,
+                nom=form.cleaned_data['nom'],
+                prenom=form.cleaned_data['prenom'],
+                email=form.cleaned_data['email'],
+                tel=form.cleaned_data['tel'],
+                adresse=form.cleaned_data['adresse'],
+            )
+            return redirect('login')
+    else:
+        form = ClientRegisterForm()
+    return render(request, 'gestion/register_client.html', {'form': form})
+
+
+@login_required
+def dashboard_client(request):
+    if request.user.role != 'client':
+        return redirect('dashboard')
+
+    commandes_en_attente = Commande.objects.filter(client=request.user, statut='en_attente').count()
+    commandes_en_cours = Commande.objects.filter(client=request.user, statut='en_cours').count()
+    commandes_livrees = Commande.objects.filter(client=request.user, statut='livree').count()
+
+    return render(request, 'gestion/dashboard_client.html', {
+        'commandes_en_attente': commandes_en_attente,
+        'commandes_en_cours': commandes_en_cours,
+        'commandes_livrees': commandes_livrees,
+    })
+
+
+@login_required
+def modifier_profil_client(request):
+    client = Client.objects.get(user=request.user)
+    if request.method == 'POST':
+        client.nom = request.POST.get('nom')
+        client.prenom = request.POST.get('prenom')
+        client.email = request.POST.get('email')
+        client.tel = request.POST.get('tel')
+        client.adresse = request.POST.get('adresse')
+        client.save()
+        return redirect('dashboard_client')
+    return render(request, 'gestion/modifier_profil.html', {'client': client})
+
+
+# PRODUITS (ADMIN)
 @login_required
 def produits(request):
-    query = request.GET.get("q", "")
-    per_page = int(request.GET.get("per_page", 10))
-
-    qs = Produit.objects.all()
-
-    if query:
-        qs = qs.filter(designation__icontains=query)
-
-    paginator = Paginator(qs, per_page)
-    page = request.GET.get("page")
-
-    try:
-        produits_page = paginator.get_page(page)
-    except PageNotAnInteger:
-        produits_page = paginator.get_page(1)
-    except EmptyPage:
-        produits_page = paginator.get_page(1)  # ou paginator.get_page(paginator.num_pages)
-
-    context = {
-        "produits": produits_page,
-        "query": query,
-        "per_page": per_page,
-        "per_page_options": [10, 25, 50, 100],
-    }
-    return render(request, "gestion/produits/liste.html", context)
-
-
-@login_required
-def ajouter_produit(request):
-    fournisseurs = Fournisseur.objects.all()
-
-    if request.method == "POST":
-        reference = request.POST.get("reference")
-        designation = request.POST.get("designation")
-        prix = request.POST.get("prix")
-        quantite = request.POST.get("quantite")
-        fournisseur_id = request.POST.get("fournisseur")
-        image = request.FILES.get("image")
-
-        # Validation quantité
-        try:
-            quantite_int = int(quantite)
-            if quantite_int < 1:
-                messages.error(request, "La quantité doit être au moins 1.", extra_tags="produit")
-                return render(request, "gestion/produits/ajouter.html", {"fournisseurs": fournisseurs})
-        except ValueError:
-            messages.error(request, "Quantité invalide.", extra_tags="produit")
-            return render(request, "gestion/produits/ajouter.html", {"fournisseurs": fournisseurs})
-
-        # Validation fournisseur
-        try:
-            fournisseur = Fournisseur.objects.get(id=fournisseur_id)
-        except Fournisseur.DoesNotExist:
-            messages.error(request, "Fournisseur invalide.", extra_tags="produit")
-            return render(request, "gestion/produits/ajouter.html", {"fournisseurs": fournisseurs})
-
-        # Création produit
-        produit = Produit(
-            reference=reference,
-            designation=designation,
-            prix=prix,
-            quantite=quantite_int,
-            fournisseur=fournisseur,
-            image=image
-        )
-        produit.save()
-
-        # Message avec tag personnalisé
-        messages.success(request, "Produit ajouté avec succès.", extra_tags="produit")
-        return redirect("produits")
-
-    return render(request, "gestion/produits/ajouter.html", {"fournisseurs": fournisseurs})
-
-@login_required
-def modifier_produit(request, id):
-    produit = get_object_or_404(Produit, id=id)
+    produits = Produit.objects.all()
     fournisseurs = Fournisseur.objects.all()
 
     if request.method == 'POST':
-        produit.reference = request.POST.get('reference')
-        produit.designation = request.POST.get('designation')
-        produit.prix = float(request.POST.get('prix'))
-        produit.quantite = int(request.POST.get('quantite'))
-        produit.fournisseur_id = request.POST.get('fournisseur')
+        produit_id = request.POST.get('produit_id')
+        reference = request.POST['reference']
+        designation = request.POST['designation']
+        prix = float(request.POST['prix'])
+        quantite = int(request.POST['quantite'])
+        fournisseur = get_object_or_404(Fournisseur, id=request.POST['fournisseur'])
 
-        # Gestion de l'image si un nouveau fichier est envoyé
-        if 'image' in request.FILES:
-            produit.image = request.FILES['image']
+        if produit_id:
+            produit = get_object_or_404(Produit, id=produit_id)
+            produit.reference = reference
+            produit.designation = designation
+            produit.prix = prix
+            produit.quantite = quantite
+            produit.fournisseur = fournisseur
+            produit.save()
+        else:
+            Produit.objects.create(reference=reference, designation=designation, prix=prix, quantite=quantite, fournisseur=fournisseur)
+        return redirect('produits')
 
-        produit.save()
+    return render(request, 'gestion/produits.html', {'produits': produits, 'fournisseurs': fournisseurs})
 
-        messages.success(request, "Produit modifié avec succès.")
-
-        # Redirection vers la même page pour voir le toast
-        return redirect('modifier_produit', id=produit.id)
-
-    return render(request, 'gestion/produits/modifier.html', {
-        'produit': produit,
-        'fournisseurs': fournisseurs
-    })
 
 @login_required
 def supprimer_produit(request, id):
@@ -163,239 +171,83 @@ def supprimer_produit(request, id):
     return redirect('produits')
 
 
-
-#client
+# PRODUITS (CLIENT)
 @login_required
-def clients(request):
-    query = request.GET.get('q', '')
-    per_page = request.GET.get('per_page', 10)
-    try:
-        per_page = int(per_page)
-    except ValueError:
-        per_page = 10
-
-    per_page_options = [5, 10, 20, 50]
-
-    clients_qs = Client.objects.all()
-    if query:
-        clients_qs = clients_qs.filter(nom__icontains=query)  # ou autre filtre
-
-    paginator = Paginator(clients_qs, per_page)
-    page_number = request.GET.get('page')
-    clients_page = paginator.get_page(page_number)
-
-    context = {
-        'clients': clients_page,
-        'query': query,
-        'per_page': per_page,
-        'per_page_options': per_page_options,
-    }
-    return render(request, 'gestion/clients/liste.html', context)
-
-
+def produits_client(request):
+    produits = Produit.objects.all()
+    return render(request, 'gestion/produits_client.html', {'produits': produits})
 
 
 @login_required
-def ajouter_client(request):
-    if request.method == "POST":
-        Client.objects.create(
-            nom     = request.POST["nom"],
-            prenom  = request.POST["prenom"],
-            email   = request.POST["email"],
-            tel     = request.POST.get("tel",""),
-            adresse = request.POST.get("adresse",""),
-        )
-        messages.success(request, "Client ajouté.")
-        return redirect("clients")
-    return render(request, "gestion/clients/ajouter.html", {"client": None})
+def commander_produit(request, produit_id):
+    produit = get_object_or_404(Produit, id=produit_id)
+    quantite = int(request.POST.get('quantite', 1))
+    if quantite > 0 and quantite <= produit.quantite:
+        Commande.objects.create(client=request.user, produit=produit, quantite=quantite)
+        produit.quantite -= quantite
+        produit.save()
+    return redirect('produits_client')
+
 
 @login_required
-def modifier_client(request, client_id):
-    client = get_object_or_404(Client, id=client_id)
-    if request.method == "POST":
-        client.nom     = request.POST["nom"]
-        client.prenom  = request.POST["prenom"]
-        client.email   = request.POST["email"]
-        client.tel     = request.POST.get("tel","")
-        client.adresse = request.POST.get("adresse","")
-        client.save()
-        messages.success(request, "Client modifié.")
-        return redirect("clients")
-    return render(request, "gestion/clients/modifier.html", {"client": client})
-
-@login_required
-def supprimer_client(request, client_id):
-    client = get_object_or_404(Client, id=client_id)
-    client.delete()
-    messages.success(request, "Client supprimé.")
-    return redirect("clients")
+def mes_commandes(request):
+    commandes = Commande.objects.filter(client=request.user).order_by('-date_commande')
+    return render(request, 'gestion/mes_commandes.html', {'commandes': commandes})
 
 
-
+# FOURNISSEURS
 @login_required
 def fournisseurs(request):
-    query = request.GET.get("q", "")
-    per_page = request.GET.get("per_page", 10)
-    try:
-        per_page = int(per_page)
-    except ValueError:
-        per_page = 10
-    per_page_options = [5, 10, 20, 50]
-
-    qs = Fournisseur.objects.all().order_by("libelle")
-    if query:
-        qs = qs.filter(libelle__icontains=query)
-
-    paginator = Paginator(qs, per_page)
-    page = request.GET.get("page")
-    try:
-        fournisseurs_page = paginator.get_page(page)
-    except (PageNotAnInteger, EmptyPage):
-        fournisseurs_page = paginator.get_page(1)
-
-    return render(request, "gestion/fournisseur/liste.html", {
-        "fournisseurs":    fournisseurs_page,
-        "query":           query,
-        "per_page":        per_page,
-        "per_page_options": per_page_options,
-    })
-
-@login_required
-def ajouter_fournisseur(request):
-    if request.method == "POST":
-        Fournisseur.objects.create(
-            libelle = request.POST.get("libelle", ""),
-            email   = request.POST.get("email", ""),
-            tel     = request.POST.get("tel", ""),
-            adresse = request.POST.get("adresse", ""),
-        )
-        messages.success(request, "Fournisseur ajouté.")
-        return redirect("fournisseurs")
-    return render(request, "gestion/fournisseur/ajouter.html", {"fournisseur": None})
-
-@login_required
-def modifier_fournisseur(request, fournisseur_id):
-    fournisseur = get_object_or_404(Fournisseur, id=fournisseur_id)
-    if request.method == "POST":
-        fournisseur.libelle = request.POST.get("libelle", "")
-        fournisseur.email   = request.POST.get("email", "")
-        fournisseur.tel     = request.POST.get("tel", "")
-        fournisseur.adresse = request.POST.get("adresse", "")
-        fournisseur.save()
-        messages.success(request, "Fournisseur modifié.")
-        return redirect("fournisseurs")
-    return render(request, "gestion/fournisseur/modifier.html", {"fournisseur": fournisseur})
-
-@login_required
-def supprimer_fournisseur(request, fournisseur_id):
-    # si tu veux forcer POST :
-    if request.method == "POST":
-        fournisseur = get_object_or_404(Fournisseur, id=fournisseur_id)
-        fournisseur.delete()
-        messages.success(request, "Fournisseur supprimé.")
-    return redirect("fournisseurs")
-
-def rapport_produit(request, id):
-    produit = get_object_or_404(Produit, id=id)
-
-    if produit.image:
-        # Construction du chemin absolu avec pathlib
-        image_path = pathlib.Path(settings.MEDIA_ROOT) / produit.image.name
-        # Formatage du chemin en URL file:// pour Windows (3 slashs + slash avant chaque dossier)
-        image_url = f'file:///{image_path.as_posix()}'
-    else:
-        image_url = None
-
-    html_string = render_to_string('gestion/produits/rapport.html', {
-        'produit': produit,
-        'image_url': image_url
-    })
-
-    # IMPORTANT : indiquer base_url pour aider WeasyPrint à résoudre les chemins locaux
-    html = HTML(string=html_string, base_url=settings.MEDIA_ROOT)
-    result = html.write_pdf()
-
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'inline; filename=rapport_produit_{produit.id}.pdf'
-    response.write(result)
-    print("IMAGE PATH = ", image_url)
-    return response
-
-@login_required
-def stock_list(request):
-    stocks = Stock.objects.all().order_by('-date_creation')
-    return render(request, 'gestion/stock/liste_stocks.html', {'stocks': stocks})
-
-@login_required
-def ajouter_stock(request):
     if request.method == 'POST':
-        nom = request.POST.get('nom', '').strip()
-        emplacement = request.POST.get('emplacement', '').strip()
-        Stock.objects.create(nom=nom, emplacement=emplacement)
-        messages.success(request, "Stock créé avec succès.")
-        return redirect('stock')
-    return render(request, 'gestion/stock/ajouter_stock.html')
+        fournisseur_id = request.POST.get("fournisseur_id")
+        libelle = request.POST.get("libelle")
+        email = request.POST.get("email")
+        tel = request.POST.get("tel")
+        adresse = request.POST.get("adresse")
+
+        if fournisseur_id:
+            fournisseur = get_object_or_404(Fournisseur, id=fournisseur_id)
+            fournisseur.libelle = libelle
+            fournisseur.email = email
+            fournisseur.tel = tel
+            fournisseur.adresse = adresse
+            fournisseur.save()
+        else:
+            Fournisseur.objects.create(libelle=libelle, email=email, tel=tel, adresse=adresse)
+        return redirect("fournisseurs")
+
+    fournisseurs = Fournisseur.objects.all()
+    return render(request, "gestion/fournisseurs.html", {"fournisseurs": fournisseurs})
+
 
 @login_required
-def detail_stock(request, stock_id):
-    stock = get_object_or_404(Stock, id=stock_id)
-    # on récupère l'historique des mouvements
-    mouvements = MouvementStock.objects.filter(stock=stock).select_related('produit').order_by('-date')
-    # on récupère **tous** les produits pour le <select>
-    produits = Produit.objects.all().order_by('designation')
+def supprimer_fournisseur(request, id):
+    fournisseur = get_object_or_404(Fournisseur, id=id)
+    fournisseur.delete()
+    messages.success(request, "Fournisseur supprimé")
+    return redirect('fournisseurs')
 
-    return render(request, 'gestion/stock/detail.html', {
-        'stock':     stock,
-        'mouvements': mouvements,
-        'produits':  produits,    # ← maintenant définie !
-    })
+
+# STOCK
 @login_required
-def ajouter_mouvement(request, stock_id):
-    stock = get_object_or_404(Stock, id=stock_id)
+def stock_view(request):
+    produits = Produit.objects.all()
+    stocks = Stock.objects.order_by('-date')
+
     if request.method == 'POST':
         produit = get_object_or_404(Produit, id=request.POST['produit'])
-        q_entree = int(request.POST.get('entree', 0))
-        q_sortie = int(request.POST.get('sortie', 0))
+        entree = int(request.POST.get('quantite_entree', 0))
+        sortie = int(request.POST.get('quantite_sortie', 0))
 
-        # Création du mouvement
-        MouvementStock.objects.create(
-            stock=stock,
-            produit=produit,
-            quantite_entree=q_entree,
-            quantite_sortie=q_sortie
-        )
+        if entree == 0 and sortie == 0:
+            return render(request, 'gestion/stock.html', {
+                'produits': produits, 'stocks': stocks,
+                'error': "Veuillez entrer une quantité d'entrée ou de sortie."
+            })
 
-        # Mise à jour de la quantité réelle
-        produit.quantite = produit.quantite + q_entree - q_sortie
+        Stock.objects.create(produit=produit, quantite_entree=entree, quantite_sortie=sortie, date=timezone.now())
+        produit.quantite += entree - sortie
         produit.save()
+        return redirect('stock')
 
-        # Message d’alerte si besoin
-        if produit.en_alerte:
-            messages.warning(
-                request,
-                f"⚠️ Stock bas pour « {produit.designation} » "
-                f"(reste : {produit.quantite}, seuil : {produit.seuil})"
-            )
-
-        messages.success(request, "Mouvement ajouté.")
-        return redirect('detail_stock', stock_id=stock.id)
-
-    produits = Produit.objects.all().order_by('designation')
-    return render(request, 'gestion/stock/ajouter_mouvement.html', {
-        'stock': stock,
-        'produits': produits
-    })
-
-@login_required
-def pdf_rapport_stock(request, stock_id):
-    stock = get_object_or_404(Stock, id=stock_id)
-    mouvements = MouvementStock.objects.filter(stock=stock).select_related('produit')
-    html_string = render_to_string('gestion/stock/rapport_stock.html', {
-        'stock': stock,
-        'mouvements': mouvements,
-    })
-    html = HTML(string=html_string, base_url=settings.MEDIA_ROOT)
-    pdf = html.write_pdf()
-    response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'inline; filename=rapport_stock_{stock_id}.pdf'
-    return response
+    return render(request, 'gestion/stock.html', {'produits': produits, 'stocks': stocks})
