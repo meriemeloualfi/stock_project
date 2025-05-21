@@ -46,6 +46,7 @@ urlpatterns = [
 path('client/produits/', views.produits_client, name='produits_client'),
 path('client/produits/commande/<int:produit_id>/', views.commander_produit, name='commander_produit'),
 path('client/commandes/', views.mes_commandes, name='mes_commandes'),
+path('register/', views.register_client, name='register_client'),
 
 
     path('logout/', views.custom_logout, name='logout'),

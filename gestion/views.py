@@ -404,6 +404,7 @@ def pdf_rapport_stock(request, stock_id):
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename=rapport_stock_{stock_id}.pdf'
     return response
+
 def register_client(request):
     if request.method == 'POST':
         form = ClientRegisterForm(request.POST)
