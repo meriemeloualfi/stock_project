@@ -40,6 +40,13 @@ urlpatterns = [
     path('stock/<int:stock_id>/rapport/', views.pdf_rapport_stock, name='pdf_rapport_stock'),
     path('stock/<int:stock_id>/mouvement/', views.ajouter_mouvement, name='ajouter_mouvement'),
 
-    
+    path('client/dashboard/', views.dashboard_client, name='dashboard_client'),
+    path('client/profil/', views.modifier_profil_client, name='modifier_profil'),
+
+path('client/produits/', views.produits_client, name='produits_client'),
+path('client/produits/commande/<int:produit_id>/', views.commander_produit, name='commander_produit'),
+path('client/commandes/', views.mes_commandes, name='mes_commandes'),
+
+
     path('logout/', views.custom_logout, name='logout'),
 ]

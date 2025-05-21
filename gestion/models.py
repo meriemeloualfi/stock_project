@@ -12,6 +12,7 @@ class CustomUser(AbstractUser):
 
 
 class Client(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="client_profile", null=True)
     nom = models.CharField(max_length=100, default='Nom inconnu')
     prenom = models.CharField(max_length=100, default='Prénom inconnu')
     email = models.EmailField(default='exemple@email.com')
@@ -77,3 +78,22 @@ class MouvementStock(models.Model):
 
     def __str__(self):
         return f"{self.produit} @ {self.stock} le {self.date}"
+
+from django.db import models
+from django.conf import settings
+
+class Commande(models.Model):
+    STATUT_CHOICES = [
+        ('en_attente', 'En attente de confirmation'),
+        ('en_cours', 'En cours de livraison'),
+        ('livree', 'Livrée'),
+    ]
+
+    client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    produit = models.ForeignKey('Produit', on_delete=models.CASCADE)
+    quantite = models.PositiveIntegerField(default=1)
+    date_commande = models.DateTimeField(auto_now_add=True)
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='en_attente')  # ← AJOUTÉ
+
+    def __str__(self):
+        return f"Commande {self.id} - {self.produit.designation}"

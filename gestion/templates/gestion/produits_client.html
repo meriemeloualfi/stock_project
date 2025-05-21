@@ -1,0 +1,29 @@
+{% extends 'gestion/base_client.html' %}
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-white text-center mb-4">Produits disponibles</h2>
+  <div class="row">
+    {% for produit in produits %}
+      <div class="col-md-4 mb-4">
+        <div class="card shadow-sm">
+          <div class="card-body text-center">
+            <h5 class="card-title">{{ produit.designation }}</h5>
+            <p class="card-text">Réf: {{ produit.reference }}</p>
+            <p>Prix : {{ produit.prix }} DH</p>
+            <p>Quantité : {{ produit.quantite }}</p>
+
+            <form method="POST" action="{% url 'commander_produit' produit.id %}">
+              {% csrf_token %}
+              <input type="number" name="quantite" min="1" max="{{ produit.quantite }}" value="1" required style="width: 60px;">
+              <button type="submit" class="btn btn-success mt-2">Commander</button>
+            </form>
+
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p class="text-white text-center">Aucun produit disponible.</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

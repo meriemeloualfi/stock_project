@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
-from .models import Client, Fournisseur, Produit, Stock, MouvementStock
+from .models import Client, Fournisseur, Produit, Stock, MouvementStock, Commande
 from django.db.models import Q
 from django.http import HttpResponse
 from django.template.loader import get_template
@@ -17,25 +17,30 @@ from django.http import HttpResponse
 from django.template.loader import render_to_string
 import weasyprint
 import pathlib
-
+from .forms import ClientRegisterForm
 
 # LOGIN
 def custom_login(request):
     if request.method == 'POST':
-        user = authenticate(request, username=request.POST['username'], password=request.POST['password'])
-        if user:
+        username = request.POST['username']
+        password = request.POST['password']
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
             login(request, user)
-            return redirect('dashboard')
+            if user.role == 'client':
+                return redirect('dashboard_client')
+            elif user.role == 'fournisseur':
+                return redirect('fournisseur_home')
+            else:
+                return redirect('dashboard')
         else:
             return render(request, 'gestion/login.html', {'error': 'Identifiants incorrects'})
     return render(request, 'gestion/login.html')
 
-
-# LOGOUT
 def custom_logout(request):
     logout(request)
     return redirect('login')
-
 
 # DASHBOARD
 @login_required
@@ -399,3 +404,104 @@ def pdf_rapport_stock(request, stock_id):
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename=rapport_stock_{stock_id}.pdf'
     return response
+def register_client(request):
+    if request.method == 'POST':
+        form = ClientRegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.role = 'client'
+            user.save()
+
+            Client.objects.create(
+                user=user,
+                nom=form.cleaned_data['nom'],
+                prenom=form.cleaned_data['prenom'],
+                email=form.cleaned_data['email'],
+                tel=form.cleaned_data['tel'],
+                adresse=form.cleaned_data['adresse'],
+            )
+            return redirect('login')
+    else:
+        form = ClientRegisterForm()
+    return render(request, 'gestion/register_client.html', {'form': form})
+
+
+@login_required
+def dashboard_client(request):
+    if request.user.role != 'client':
+        return redirect('dashboard')
+
+    commandes_en_attente = Commande.objects.filter(client=request.user, statut='en_attente').count()
+    commandes_en_cours = Commande.objects.filter(client=request.user, statut='en_cours').count()
+    commandes_livrees = Commande.objects.filter(client=request.user, statut='livree').count()
+
+    return render(request, 'gestion/dashboard_client.html', {
+        'commandes_en_attente': commandes_en_attente,
+        'commandes_en_cours': commandes_en_cours,
+        'commandes_livrees': commandes_livrees,
+    })
+
+
+@login_required
+def modifier_profil_client(request):
+    client = Client.objects.get(user=request.user)
+    if request.method == 'POST':
+        client.nom = request.POST.get('nom')
+        client.prenom = request.POST.get('prenom')
+        client.email = request.POST.get('email')
+        client.tel = request.POST.get('tel')
+        client.adresse = request.POST.get('adresse')
+        client.save()
+        return redirect('dashboard_client')
+    return render(request, 'gestion/modifier_profil.html', {'client': client})
+
+
+
+
+@login_required
+def supprimer_produit(request, id):
+    produit = get_object_or_404(Produit, id=id)
+    produit.delete()
+    return redirect('produits')
+
+
+# PRODUITS (CLIENT)
+@login_required
+def produits_client(request):
+    produits = Produit.objects.all()
+    return render(request, 'gestion/produits_client.html', {'produits': produits})
+
+
+@login_required
+def commander_produit(request, produit_id):
+    if request.method == "POST":
+        produit = get_object_or_404(Produit, id=produit_id)
+        quantite = int(request.POST.get('quantite', 1))
+
+        if quantite > 0 and quantite <= produit.quantite:
+            # Vérifier si le client a déjà commandé ce produit avec statut "en_attente"
+            commande_existante = Commande.objects.filter(
+                client=request.user,
+                produit=produit,
+                statut='en_attente'  # tu peux adapter à 'en_cours' ou tous statuts
+            ).first()
+
+            if commande_existante:
+                commande_existante.quantite += quantite
+                commande_existante.save()
+            else:
+                Commande.objects.create(
+                    client=request.user,
+                    produit=produit,
+                    quantite=quantite
+                )
+
+            produit.quantite -= quantite
+            produit.save()
+
+    return redirect('produits_client')
+
+@login_required
+def mes_commandes(request):
+    commandes = Commande.objects.filter(client=request.user).order_by('-date_commande')
+    return render(request, 'gestion/mes_commandes.html', {'commandes': commandes})
