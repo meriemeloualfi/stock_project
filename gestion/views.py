@@ -43,19 +43,35 @@ def custom_logout(request):
     return redirect('login')
 
 # DASHBOARD
+from django.db.models import Sum
+
 @login_required
 def dashboard(request):
     total_produits = Produit.objects.count()
     total_clients = Client.objects.count()
     total_fournisseurs = Fournisseur.objects.count()
-    total_stock = Stock.objects.count() 
+    total_stock = Stock.objects.count()
+
+    # Top 5 produits les plus vendus (somme des quantités commandées par produit)
+    top_produits = (
+        Commande.objects
+        .values('produit__designation')
+        .annotate(total_vente=Sum('quantite'))
+        .order_by('-total_vente')[:5]
+    )
+
+    labels = [p['produit__designation'] for p in top_produits]
+    data = [p['total_vente'] for p in top_produits]
 
     return render(request, 'gestion/dashboard.html', {
         'total_produits': total_produits,
         'total_clients': total_clients,
         'total_fournisseurs': total_fournisseurs,
         'total_stock': total_stock,
+        'chart_labels': labels,
+        'chart_data': data,
     })
+
 
 # PRODUITS
 @login_required
@@ -300,6 +316,7 @@ def supprimer_fournisseur(request, fournisseur_id):
         messages.success(request, "Fournisseur supprimé.")
     return redirect("fournisseurs")
 
+
 def rapport_produit(request, id):
     produit = get_object_or_404(Produit, id=id)
 
@@ -506,3 +523,28 @@ def commander_produit(request, produit_id):
 def mes_commandes(request):
     commandes = Commande.objects.filter(client=request.user).order_by('-date_commande')
     return render(request, 'gestion/mes_commandes.html', {'commandes': commandes})
+
+
+
+def admin_commandes(request):
+    commandes = Commande.objects.select_related('client', 'produit').all().order_by('-date_commande')
+    return render(request, 'gestion/admin_commandes.html', {'commandes': commandes})
+
+
+def marquer_en_attente(request, commande_id):
+    commande = get_object_or_404(Commande, pk=commande_id)
+    commande.statut = 'en_attente'
+    commande.save()
+    return redirect('admin_commandes')
+
+def marquer_en_cours(request, commande_id):
+    commande = get_object_or_404(Commande, pk=commande_id)
+    commande.statut = 'en_cours'
+    commande.save()
+    return redirect('admin_commandes')
+
+def marquer_livree(request, commande_id):
+    commande = get_object_or_404(Commande, pk=commande_id)
+    commande.statut = 'livree'
+    commande.save()
+    return redirect('admin_commandes')

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>StockMaster</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
 
   <style>
     body {
@@ -93,7 +93,6 @@
     .card-body i {
       pointer-events: none;
     }
-    /* Optionnel: améliorer le style des toasts */
     .toast {
       box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
       border-radius: 0.5rem;
@@ -109,7 +108,7 @@
     </div>
 
     <div class="user-info">
-      <img src="https://secure.gravatar.com/avatar/3a4fe3914947f15d8971ad36d20f13b3?s=192" alt="Utilisateur">
+      <img src="https://secure.gravatar.com/avatar/3a4fe3914947f15d8971ad36d20f13b3?s=192" alt="Utilisateur" />
       <h6>Admin</h6>
     </div>
 
@@ -118,6 +117,7 @@
       <a href="{% url 'clients' %}"><i class="bi bi-people"></i> Clients</a>
       <a href="{% url 'fournisseurs' %}"><i class="bi bi-truck"></i> Fournisseurs</a>
       <a href="{% url 'stock' %}"><i class="bi bi-clipboard-data"></i> Stock</a>
+      <a href="{% url 'admin_commandes' %}"><i class="bi bi-bag-check"></i> Commandes</a>
     </div>
 
     <div class="logout mt-auto">
@@ -128,9 +128,7 @@
   <main class="main-content">
     {% block content %}
 
-    <!-- Conteneur pour les toasts placé ici, au-dessus du contenu -->
-    <div class="position-fixed top-0 end-0 p-3" 
-         style="z-index: 1080; margin-top: 70px; margin-right: 20px;">
+    <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080; margin-top: 70px; margin-right: 20px;">
       <div id="toast-container" class="toast-container"></div>
     </div>
 
@@ -177,11 +175,19 @@
         </div>
       </div>
     </div>
+
+    <h3 class="mt-5 mb-3 text-center">Top 5 des produits les plus vendus</h3>
+    <div class="d-flex justify-content-center">
+      <canvas id="topProduitsChart" width="330" height="300"></canvas>
+    </div>
+
     {% endblock %}
   </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
@@ -194,7 +200,6 @@
         toastEl.setAttribute("role", "alert");
         toastEl.setAttribute("aria-live", "assertive");
         toastEl.setAttribute("aria-atomic", "true");
-
         toastEl.innerHTML = `
           <div class="d-flex">
             <div class="toast-body">{{ message|escape }}</div>
@@ -202,12 +207,58 @@
           </div>
         `;
         toastContainer.appendChild(toastEl);
-
-        new bootstrap.Toast(toastEl, {
-          delay: 4000
-        }).show();
+        new bootstrap.Toast(toastEl, { delay: 4000 }).show();
       {% endfor %}
     {% endif %}
+
+    const ctx = document.getElementById('topProduitsChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: {{ chart_labels|safe }},
+        datasets: [{
+          data: {{ chart_data|safe }},
+          backgroundColor: [
+            '#A8DADC', '#F4A261', '#F6BD60', '#84A59D', '#FFB5A7'
+          ],
+          borderColor: '#fff',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: false,  // <== important pour fixer la taille du canvas
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 20,
+              padding: 15
+            }
+          },
+          datalabels: {
+            color: '#333',
+            font: {
+              weight: 'bold',
+              size: 14
+            },
+            formatter: function (value, context) {
+              const total = context.chart._metasets ? context.chart._metasets[0].total : context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+              return ((value / total) * 100).toFixed(1) + '%';
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const label = context.label || '';
+                const value = context.formattedValue;
+                return `${label} : ${value} vendus`;
+              }
+            }
+          }
+        }
+      },
+      plugins: [ChartDataLabels]
+    });
   });
 </script>
 

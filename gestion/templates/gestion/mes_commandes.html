@@ -21,15 +21,19 @@
         <td>{{ commande.quantite }}</td>
         <td>{{ commande.date_commande|date:"d/m/Y H:i" }}</td>
         <td>
-          {% if commande.statut == "en_attente" %}
-            <span class="badge bg-warning">En attente</span>
-          {% elif commande.statut == "en_cours" %}
-            <span class="badge bg-info">En cours</span>
-          {% elif commande.statut == "livree" %}
-            <span class="badge bg-success">Livrée</span>
-          {% else %}
-            <span class="badge bg-secondary">Inconnu</span>
-          {% endif %}
+          {% with libelle=commande.get_statut_display %}
+            {% if commande.statut == "en_attente" %}
+              <span class="badge bg-warning">{{ libelle }}</span>
+            {% elif commande.statut == "en_cours" %}
+              <span class="badge bg-info">{{ libelle }}</span>
+            {% elif commande.statut == "livree" %}
+              <span class="badge bg-success">{{ libelle }}</span>
+            {% elif commande.statut == "refusee" %}
+              <span class="badge bg-danger">{{ libelle }}</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ libelle|default:"Inconnu" }}</span>
+            {% endif %}
+          {% endwith %}
         </td>
       </tr>
       {% empty %}

@@ -43,10 +43,16 @@ urlpatterns = [
     path('client/dashboard/', views.dashboard_client, name='dashboard_client'),
     path('client/profil/', views.modifier_profil_client, name='modifier_profil'),
 
-path('client/produits/', views.produits_client, name='produits_client'),
-path('client/produits/commande/<int:produit_id>/', views.commander_produit, name='commander_produit'),
-path('client/commandes/', views.mes_commandes, name='mes_commandes'),
-path('register/', views.register_client, name='register_client'),
+    path('client/produits/', views.produits_client, name='produits_client'),
+    path('client/produits/commande/<int:produit_id>/', views.commander_produit, name='commander_produit'),
+    path('client/commandes/', views.mes_commandes, name='mes_commandes'),
+    path('register/', views.register_client, name='register_client'),
+
+   
+    path('commandes/', views.admin_commandes, name='admin_commandes'),
+    path('commande/<int:commande_id>/attente/', views.marquer_en_attente, name='commande_attente'),
+    path('commande/<int:commande_id>/cours/', views.marquer_en_cours, name='commande_cours'),
+    path('commande/<int:commande_id>/livree/', views.marquer_livree, name='commande_livree'),
 
 
     path('logout/', views.custom_logout, name='logout'),
